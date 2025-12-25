@@ -89,10 +89,14 @@ export const getPageBySlug = async (slug) => {
     const q = query(pagesCollection, where('slug', '==', slug))
     const querySnapshot = await getDocs(q)
     if (querySnapshot.empty) return null
-    const doc = querySnapshot.docs[0]
-    return { id: doc.id, ...doc.data() }
+    const docData = querySnapshot.docs[0]
+    return { id: docData.id, ...docData.data() }
   } catch (error) {
-    console.error('Error fetching page:', error)
+    console.error('Error fetching page by slug:', error)
+    // Don't throw permission errors, just return null
+    if (error.code === 'permission-denied') {
+      return null
+    }
     throw error
   }
 }
@@ -110,7 +114,7 @@ export const getPageById = async (pageId) => {
 
 export const getUserPages = async (userId) => {
   try {
-    const q = query(pagesCollection, where('ownerId', '==', userId))
+    const q = query(pagesCollection, where('ownerId', '==', userId), orderBy('createdAt', 'desc'))
     const querySnapshot = await getDocs(q)
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
   } catch (error) {

@@ -13,10 +13,20 @@ export default function LandingRenderer() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showUnpaidNotice, setShowUnpaidNotice] = useState(false)
+  const [useIframe, setUseIframe] = useState(false)
 
   useEffect(() => {
     loadPage()
   }, [businessSlug])
+
+  useEffect(() => {
+    // Check if page HTML is a complete HTML document
+    if (page?.html) {
+      const hasHtmlTag = page.html.toLowerCase().includes('<html')
+      const hasDoctype = page.html.toLowerCase().includes('<!doctype')
+      setUseIframe(hasHtmlTag || hasDoctype)
+    }
+  }, [page])
 
   const loadPage = async () => {
     try {
@@ -24,6 +34,13 @@ export default function LandingRenderer() {
       
       if (!pageData) {
         setError('Page not found')
+        return
+      }
+
+      // Only show published pages to public
+      // Admin can see drafts via preview link (check if logged in as admin)
+      if (pageData.status !== 'published') {
+        setError('This page is not published yet.')
         return
       }
 
@@ -35,7 +52,11 @@ export default function LandingRenderer() {
       setPage(pageData)
     } catch (err) {
       console.error('Error loading page:', err)
-      setError(err.message)
+      if (err.code === 'permission-denied') {
+        setError('This page is not available.')
+      } else {
+        setError('Failed to load page. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -57,9 +78,11 @@ export default function LandingRenderer() {
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center max-w-md px-4">
           <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Page Not Found</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            {error === 'Page not found' ? 'Page Not Found' : 'Page Unavailable'}
+          </h1>
           <p className="text-gray-600 mb-6">
-            The page you're looking for doesn't exist or has been removed.
+            {error || "The page you're looking for doesn't exist or has been removed."}
           </p>
           <Link to="/explore">
             <Button>Explore Other Pages</Button>
@@ -71,8 +94,8 @@ export default function LandingRenderer() {
 
   // Sanitize HTML to prevent XSS
   const sanitizedHTML = DOMPurify.sanitize(page.html, {
-    ADD_TAGS: ['iframe'],
-    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling']
+    ADD_TAGS: ['iframe', 'style', 'script'],
+    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'target', 'rel']
   })
 
   return (
@@ -118,24 +141,38 @@ export default function LandingRenderer() {
         </div>
       </Modal>
 
-      {/* Render Landing Page HTML */}
-      <div
-        className="landing-page-content"
-        dangerouslySetInnerHTML={{ __html: sanitizedHTML }}
-      />
-
-      {/* KashPages Branding Footer (only if not custom domain) */}
-      <div className="bg-gray-900 text-white py-6">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-sm opacity-75">
-            Powered by{' '}
-            <Link to="/" className="font-medium hover:underline">
-              KashPages
-            </Link>
-            {' '}- Professional Landing Pages for Kashmir Businesses
-          </p>
-        </div>
-      </div>
+      {/* Render Landing Page */}
+      {useIframe ? (
+        // Full HTML document - use iframe to isolate from parent page
+        <iframe
+          srcDoc={sanitizedHTML}
+          className="w-full min-h-screen border-0"
+          style={{ height: '100vh' }}
+          title={page.title}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+        />
+      ) : (
+        // HTML snippet - render directly
+        <>
+          <div
+            className="landing-page-content"
+            dangerouslySetInnerHTML={{ __html: sanitizedHTML }}
+          />
+          
+          {/* KashPages Branding Footer (only for snippets) */}
+          <div className="bg-gray-900 text-white py-6">
+            <div className="max-w-7xl mx-auto px-4 text-center">
+              <p className="text-sm opacity-75">
+                Powered by{' '}
+                <Link to="/" className="font-medium hover:underline">
+                  KashPages
+                </Link>
+                {' '}- Professional Landing Pages for Kashmir Businesses
+              </p>
+            </div>
+          </div>
+        </>
+      )}
     </>
   )
 }
