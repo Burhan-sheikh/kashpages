@@ -2,32 +2,85 @@
 export default {
   content: [
     './index.html',
-    './src/**/*.{js,jsx}'
+    './src/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {
       colors: {
-        primary: '#2563eb',
-        secondary: '#64748b',
-        danger: '#dc2626',
-        success: '#16a34a',
-        warning: '#ea580c'
+        primary: {
+          DEFAULT: '#2563eb', // Blue-600
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
+        },
+        secondary: {
+          DEFAULT: '#64748b',
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b',
+          900: '#0f172a',
+        },
+        success: '#10b981',
+        warning: '#f59e0b',
+        danger: '#ef4444',
+      },
+      fontFamily: {
+        sans: [
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'Helvetica Neue',
+          'Arial',
+          'sans-serif',
+        ],
+      },
+      borderRadius: {
+        'xl': '1rem',
+        '2xl': '1.5rem',
+      },
+      boxShadow: {
+        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
+        'premium': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
       },
       animation: {
-        'fade-in': 'fadeIn 0.3s ease-in',
-        'slide-down': 'slideDown 0.3s ease-out'
+        'fade-in': 'fadeIn 0.3s ease-in-out',
+        'slide-up': 'slideUp 0.4s ease-out',
+        'slide-down': 'slideDown 0.4s ease-out',
       },
       keyframes: {
         fadeIn: {
           '0%': { opacity: '0' },
-          '100%': { opacity: '1' }
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
         },
         slideDown: {
           '0%': { transform: 'translateY(-10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' }
-        }
-      }
-    }
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+        '128': '32rem',
+      },
+    },
   },
-  plugins: []
+  plugins: [],
 }
