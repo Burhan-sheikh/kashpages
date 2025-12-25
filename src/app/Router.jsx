@@ -23,6 +23,7 @@ import Account from '../pages/dashboard/Account'
 // Admin
 import AdminLayout from '../pages/admin/AdminLayout'
 import PagesList from '../pages/admin/PagesList'
+import PageEditor from '../pages/admin/PageEditor'
 import Users from '../pages/admin/Users'
 
 const PageWrapper = ({ children }) => (
@@ -93,6 +94,8 @@ export default function Router() {
         >
           <Route path="" element={<Navigate to="pages" replace />} />
           <Route path="pages" element={<PagesList />} />
+          <Route path="pages/create" element={<PageEditor />} />
+          <Route path="pages/:pageId/edit" element={<PageEditor />} />
           <Route path="users" element={<Users />} />
         </Route>
 
