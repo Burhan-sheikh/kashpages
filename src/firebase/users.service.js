@@ -23,6 +23,15 @@ export const getUserById = async (userId) => {
   }
 }
 
+export const getPageOwner = async (ownerId) => {
+  try {
+    return await getUserById(ownerId)
+  } catch (error) {
+    console.error('Error fetching page owner:', error)
+    return null
+  }
+}
+
 export const getAllUsers = async () => {
   try {
     const querySnapshot = await getDocs(query(usersCollection, orderBy('createdAt', 'desc')))

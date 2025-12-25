@@ -1,13 +1,17 @@
-import DOMPurify from 'dompurify'
 import { useEffect } from 'react'
 
 export default function HtmlRenderer({ htmlContent }) {
   useEffect(() => {
-    // Sanitize and render HTML
+    // Render HTML safely
     const container = document.getElementById('html-renderer')
     if (container && htmlContent) {
-      const sanitized = DOMPurify.sanitize(htmlContent)
-      container.innerHTML = sanitized
+      // Create a temporary div to sanitize HTML
+      const temp = document.createElement('div')
+      temp.innerHTML = htmlContent
+      
+      // Clear and set
+      container.innerHTML = ''
+      container.appendChild(temp)
     }
   }, [htmlContent])
 
