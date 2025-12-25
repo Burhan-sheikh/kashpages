@@ -1,26 +1,38 @@
-import { format, isAfter, isBefore, addDays } from 'date-fns'
+export function formatDate(dateInput) {
+  if (!dateInput) return 'N/A'
+  
+  let date
+  if (typeof dateInput === 'string') {
+    date = new Date(dateInput)
+  } else if (dateInput?.seconds) {
+    // Firestore Timestamp
+    date = new Date(dateInput.seconds * 1000)
+  } else if (dateInput instanceof Date) {
+    date = dateInput
+  } else {
+    return 'Invalid date'
+  }
 
-export const formatDate = (date) => {
-  if (!date) return ''
-  const d = date.toDate ? date.toDate() : new Date(date)
-  return format(d, 'MMM dd, yyyy')
+  return date.toLocaleDateString('en-IN', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
 }
 
-export const formatDateLong = (date) => {
-  if (!date) return ''
-  const d = date.toDate ? date.toDate() : new Date(date)
-  return format(d, 'EEEE, MMMM dd, yyyy')
-}
-
-export const isPageExpired = (expiryDate) => {
+export function isPageExpired(expiryDate) {
   if (!expiryDate) return false
-  const expiry = expiryDate.toDate ? expiryDate.toDate() : new Date(expiryDate)
-  return isBefore(expiry, new Date())
-}
+  
+  let date
+  if (typeof expiryDate === 'string') {
+    date = new Date(expiryDate)
+  } else if (expiryDate?.seconds) {
+    date = new Date(expiryDate.seconds * 1000)
+  } else if (expiryDate instanceof Date) {
+    date = expiryDate
+  } else {
+    return false
+  }
 
-export const daysUntilExpiry = (expiryDate) => {
-  if (!expiryDate) return null
-  const expiry = expiryDate.toDate ? expiryDate.toDate() : new Date(expiryDate)
-  const today = new Date()
-  return Math.ceil((expiry - today) / (1000 * 60 * 60 * 24))
+  return date < new Date()
 }

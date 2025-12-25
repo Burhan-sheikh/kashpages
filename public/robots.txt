@@ -1,5 +1,11 @@
+# Allow all crawlers
 User-agent: *
 Allow: /
+
+# Sitemap location
+Sitemap: https://kashpages.in/sitemap.xml
+
+# Disallow admin and dashboard areas
 Disallow: /admin
 Disallow: /dashboard
-Sitemap: https://kashpages.in/sitemap.xml
+Disallow: /login
