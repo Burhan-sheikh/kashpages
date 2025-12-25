@@ -119,6 +119,9 @@ export const getUserPages = async (userId) => {
   }
 }
 
+// Alias for getUserPages (used by dashboard)
+export const getPagesByOwner = getUserPages
+
 export const getPublishedPages = async () => {
   try {
     const q = query(pagesCollection, where('status', '==', 'published'), orderBy('createdAt', 'desc'))
