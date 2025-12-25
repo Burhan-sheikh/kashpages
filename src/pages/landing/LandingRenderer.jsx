@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { getPageBySlug } from '../../firebase/pages.service'
 import SeoHead from '../../components/seo/SeoHead'
@@ -14,6 +14,8 @@ export default function LandingRenderer() {
   const [error, setError] = useState(null)
   const [showUnpaidNotice, setShowUnpaidNotice] = useState(false)
   const [useIframe, setUseIframe] = useState(false)
+  const iframeRef = useRef(null)
+  const contentRef = useRef(null)
 
   useEffect(() => {
     loadPage()
@@ -28,6 +30,31 @@ export default function LandingRenderer() {
     }
   }, [page])
 
+  useEffect(() => {
+    // Execute scripts in content after rendering
+    if (!useIframe && contentRef.current && page?.html) {
+      const scripts = contentRef.current.querySelectorAll('script')
+      scripts.forEach(oldScript => {
+        const newScript = document.createElement('script')
+        
+        // Copy attributes
+        Array.from(oldScript.attributes).forEach(attr => {
+          newScript.setAttribute(attr.name, attr.value)
+        })
+        
+        // Copy content or src
+        if (oldScript.src) {
+          newScript.src = oldScript.src
+        } else {
+          newScript.textContent = oldScript.textContent
+        }
+        
+        // Replace old script with new one to execute it
+        oldScript.parentNode.replaceChild(newScript, oldScript)
+      })
+    }
+  }, [page, useIframe])
+
   const loadPage = async () => {
     try {
       const pageData = await getPageBySlug(businessSlug)
@@ -38,7 +65,6 @@ export default function LandingRenderer() {
       }
 
       // Only show published pages to public
-      // Admin can see drafts via preview link (check if logged in as admin)
       if (pageData.status !== 'published') {
         setError('This page is not published yet.')
         return
@@ -92,10 +118,15 @@ export default function LandingRenderer() {
     )
   }
 
-  // Sanitize HTML to prevent XSS
+  // Prepare HTML - allow scripts, styles, and external resources
   const sanitizedHTML = DOMPurify.sanitize(page.html, {
-    ADD_TAGS: ['iframe', 'style', 'script'],
-    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'target', 'rel']
+    ADD_TAGS: ['iframe', 'style', 'script', 'link'],
+    ADD_ATTR: [
+      'allow', 'allowfullscreen', 'frameborder', 'scrolling', 
+      'target', 'rel', 'href', 'src', 'type', 'async', 'defer',
+      'crossorigin', 'integrity', 'referrerpolicy', 'charset'
+    ],
+    ALLOW_UNKNOWN_PROTOCOLS: true
   })
 
   return (
@@ -143,18 +174,21 @@ export default function LandingRenderer() {
 
       {/* Render Landing Page */}
       {useIframe ? (
-        // Full HTML document - use iframe to isolate from parent page
+        // Full HTML document - use iframe WITHOUT same-origin to fix sandbox warning
         <iframe
+          ref={iframeRef}
           srcDoc={sanitizedHTML}
-          className="w-full min-h-screen border-0"
-          style={{ height: '100vh' }}
+          className="w-full border-0"
+          style={{ minHeight: '100vh' }}
           title={page.title}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+          // Safe sandbox: allow scripts but NOT same-origin (prevents escape)
+          sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
         />
       ) : (
-        // HTML snippet - render directly
+        // HTML snippet - render directly with full script support
         <>
           <div
+            ref={contentRef}
             className="landing-page-content"
             dangerouslySetInnerHTML={{ __html: sanitizedHTML }}
           />
