@@ -1,16 +1,40 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { signInWithEmail, signInWithGoogle, signUpWithEmail } from '../firebase/auth'
+import { getUserById } from '../firebase/users.service'
 import SeoHead from '../components/seo/SeoHead'
 import Button from '../components/ui/Button'
+import { useAuth } from '../hooks/useAuth'
 
 export default function Login() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      redirectBasedOnRole(user.uid)
+    }
+  }, [user])
+
+  const redirectBasedOnRole = async (uid) => {
+    try {
+      const userProfile = await getUserById(uid)
+      if (userProfile?.role === 'admin') {
+        navigate('/admin', { replace: true })
+      } else {
+        navigate('/dashboard', { replace: true })
+      }
+    } catch (error) {
+      console.error('Error checking user role:', error)
+      navigate('/dashboard', { replace: true })
+    }
+  }
 
   const handleEmailAuth = async (e) => {
     e.preventDefault()
@@ -18,12 +42,13 @@ export default function Login() {
     setError('')
 
     try {
+      let user
       if (isSignUp) {
-        await signUpWithEmail(email, password)
+        user = await signUpWithEmail(email, password)
       } else {
-        await signInWithEmail(email, password)
+        user = await signInWithEmail(email, password)
       }
-      navigate('/dashboard')
+      await redirectBasedOnRole(user.uid)
     } catch (err) {
       setError(err.message || 'Authentication failed')
     } finally {
@@ -36,8 +61,8 @@ export default function Login() {
     setError('')
 
     try {
-      await signInWithGoogle()
-      navigate('/dashboard')
+      const user = await signInWithGoogle()
+      await redirectBasedOnRole(user.uid)
     } catch (err) {
       setError(err.message || 'Google sign-in failed')
     } finally {
