@@ -14,12 +14,14 @@ export const useAuth = () => {
         if (firebaseUser) {
           setUser(firebaseUser)
           const profile = await getUserById(firebaseUser.uid)
+          console.log('User profile loaded:', profile) // Debug log
           setUserProfile(profile)
         } else {
           setUser(null)
           setUserProfile(null)
         }
       } catch (err) {
+        console.error('Auth error:', err)
         setError(err.message)
       } finally {
         setLoading(false)
@@ -30,7 +32,9 @@ export const useAuth = () => {
   }, [])
 
   const isAdmin = useCallback(() => {
-    return userProfile && userProfile.role === 'admin'
+    const result = userProfile && userProfile.role === 'admin'
+    console.log('isAdmin check:', { userProfile, result }) // Debug log
+    return result
   }, [userProfile])
 
   return {

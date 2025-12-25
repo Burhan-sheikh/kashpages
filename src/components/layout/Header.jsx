@@ -5,7 +5,7 @@ import { useState } from 'react'
 
 export default function Header() {
   const navigate = useNavigate()
-  const { user, userProfile } = useAuth()
+  const { user, userProfile, isAdmin } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const handleLogout = async () => {
@@ -17,6 +17,8 @@ export default function Header() {
       console.error('Logout error:', error)
     }
   }
+
+  console.log('Header render:', { user, userProfile, isAdmin }) // Debug log
 
   return (
     <header className="bg-white shadow sticky top-0 z-50">
@@ -33,20 +35,26 @@ export default function Header() {
             </Link>
             {user && userProfile ? (
               <>
-                {userProfile.role === 'admin' && (
-                  <Link to="/admin" className="text-primary hover:text-primary/80">
-                    Admin
+                {isAdmin && (
+                  <Link to="/admin" className="text-primary hover:text-primary/80 font-medium">
+                    Admin Panel
                   </Link>
                 )}
                 <Link to="/dashboard" className="text-gray-600 hover:text-gray-900">
                   Dashboard
                 </Link>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded"
-                >
-                  Logout
-                </button>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600">
+                    {userProfile.name}
+                    {isAdmin && <span className="ml-2 text-xs bg-primary text-white px-2 py-0.5 rounded">ADMIN</span>}
+                  </span>
+                  <button
+                    onClick={handleLogout}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded"
+                  >
+                    Logout
+                  </button>
+                </div>
               </>
             ) : (
               <>
@@ -81,13 +89,13 @@ export default function Header() {
             </Link>
             {user && userProfile ? (
               <>
-                {userProfile.role === 'admin' && (
+                {isAdmin && (
                   <Link
                     to="/admin"
-                    className="block py-2 text-primary"
+                    className="block py-2 text-primary font-medium"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Admin
+                    Admin Panel
                   </Link>
                 )}
                 <Link
@@ -97,6 +105,10 @@ export default function Header() {
                 >
                   Dashboard
                 </Link>
+                <div className="py-2 text-sm text-gray-600">
+                  {userProfile.name}
+                  {isAdmin && <span className="ml-2 text-xs bg-primary text-white px-2 py-0.5 rounded">ADMIN</span>}
+                </div>
                 <button
                   onClick={handleLogout}
                   className="block w-full text-left py-2 text-gray-600"
