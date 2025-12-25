@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useAuth } from '../../hooks/useAuth'
-import { getUserPages } from '../../firebase/pages.service'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth'
+import { getPagesByOwner } from '../../firebase/pages.service'
 import Badge from '../../components/ui/Badge'
-import { formatDate, isPageExpired, daysUntilExpiry } from '../../utils/date'
+import Button from '../../components/ui/Button'
+import { formatDate, isPageExpired } from '../../utils/date'
+import { ExternalLink, AlertCircle, CheckCircle, Clock } from 'lucide-react'
 
 export default function MyPages() {
   const { user } = useAuth()
@@ -11,21 +13,21 @@ export default function MyPages() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user) return
-
-    const fetchPages = async () => {
-      try {
-        const userPages = await getUserPages(user.uid)
-        setPages(userPages)
-      } catch (error) {
-        console.error('Error fetching pages:', error)
-      } finally {
-        setLoading(false)
-      }
+    if (user) {
+      loadPages()
     }
-
-    fetchPages()
   }, [user])
+
+  const loadPages = async () => {
+    try {
+      const userPages = await getPagesByOwner(user.uid)
+      setPages(userPages)
+    } catch (error) {
+      console.error('Error loading pages:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (loading) {
     return <div className="text-center py-8">Loading your pages...</div>
@@ -33,66 +35,136 @@ export default function MyPages() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">My Landing Pages</h2>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">My Pages</h2>
+        <p className="text-gray-600">View and monitor your published landing pages</p>
+      </div>
 
       {pages.length === 0 ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-          <p className="text-gray-600 mb-4">No pages yet. Contact admin to create your landing page.</p>
-          <a href="mailto:burhan@kashpages.in" className="text-primary hover:underline">
-            Contact Admin
-          </a>
+        <div className="text-center py-16 bg-gray-50 rounded-xl">
+          <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">No Pages Yet</h3>
+          <p className="text-gray-600 mb-6">
+            You don't have any landing pages yet.
+            Contact admin to create your first page.
+          </p>
+          <div className="space-y-2 text-sm text-gray-500">
+            <p>📞 Phone: +91-XXXX-XXXX</p>
+            <p>💬 WhatsApp: +91-XXXX-XXXX</p>
+            <p>📧 Email: admin@kashpages.in</p>
+          </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          {pages.map(page => (
-            <div key={page.id} className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{page.title}</h3>
-                  <a
-                    href={`https://kashpages.in/${page.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline text-sm"
-                  >
-                    https://kashpages.in/{page.slug}
-                  </a>
-                </div>
-                <Badge variant={page.status === 'published' ? 'success' : 'warning'}>
-                  {page.status}
-                </Badge>
-              </div>
+        <div className="space-y-6">
+          {pages.map(page => {
+            const expired = isPageExpired(page.expiryDate)
+            const needsPayment = !page.isPaid && page.status === 'published'
 
-              <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                <div>
-                  <p className="text-gray-600">Plan</p>
-                  <p className="font-medium text-gray-900">{page.plan}</p>
-                </div>
-                <div>
-                  <p className="text-gray-600">Purchase Date</p>
-                  <p className="font-medium text-gray-900">
-                    {page.purchaseDate ? formatDate(page.purchaseDate) : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-gray-600">Expiry Date</p>
-                  <p className="font-medium text-gray-900">
-                    {page.expiryDate ? formatDate(page.expiryDate) : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-gray-600">Status</p>
-                  <p className={`font-medium ${isPageExpired(page.expiryDate) ? 'text-danger' : 'text-success'}`}>
-                    {isPageExpired(page.expiryDate) ? 'Expired' : daysUntilExpiry(page.expiryDate) + ' days left'}
-                  </p>
-                </div>
-              </div>
+            return (
+              <div
+                key={page.id}
+                className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow"
+              >
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-xl font-bold text-gray-900">{page.title}</h3>
+                      <Badge
+                        variant={
+                          expired
+                            ? 'danger'
+                            : page.status === 'published'
+                            ? 'success'
+                            : 'warning'
+                        }
+                      >
+                        {expired ? 'Expired' : page.status}
+                      </Badge>
+                    </div>
+                    <a
+                      href={`/${page.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline flex items-center gap-2 mb-4"
+                    >
+                      kashpages.in/{page.slug}
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
 
-              <p className="text-gray-600 text-sm">
-                Status: {page.isPaid ? 'Paid ✓' : 'Pending Payment'}
-              </p>
-            </div>
-          ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500 block mb-1">Plan</span>
+                        <span className="font-medium text-gray-900 capitalize">{page.plan}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block mb-1">Payment Status</span>
+                        <div className="flex items-center gap-2">
+                          {page.isPaid ? (
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <Clock className="w-4 h-4 text-orange-600" />
+                          )}
+                          <span className={page.isPaid ? 'text-green-600' : 'text-orange-600'}>
+                            {page.isPaid ? 'Paid' : 'Pending Payment'}
+                          </span>
+                        </div>
+                      </div>
+                      {page.purchaseDate && (
+                        <div>
+                          <span className="text-gray-500 block mb-1">Purchase Date</span>
+                          <span className="font-medium text-gray-900">
+                            {formatDate(page.purchaseDate)}
+                          </span>
+                        </div>
+                      )}
+                      {page.expiryDate && (
+                        <div>
+                          <span className="text-gray-500 block mb-1">Expiry Date</span>
+                          <span
+                            className={`font-medium ${
+                              expired ? 'text-red-600' : 'text-gray-900'
+                            }`}
+                          >
+                            {formatDate(page.expiryDate)}
+                            {expired && ' (Expired)'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <a
+                      href={`/${page.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="outline" size="sm">
+                        View Page
+                      </Button>
+                    </a>
+                  </div>
+                </div>
+
+                {needsPayment && (
+                  <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                    <p className="text-sm text-orange-800">
+                      ⚠️ <strong>Payment Pending:</strong> This page is temporarily published.
+                      Please complete payment to keep it live.
+                    </p>
+                  </div>
+                )}
+
+                {expired && (
+                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800">
+                      ❌ <strong>Expired:</strong> This page has expired. Contact admin to renew.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
