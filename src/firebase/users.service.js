@@ -23,6 +23,19 @@ export const getUserById = async (userId) => {
   }
 }
 
+export const updateUserProfile = async (userId, updates) => {
+  try {
+    const userRef = doc(usersCollection, userId)
+    await updateDoc(userRef, {
+      ...updates,
+      updatedAt: Timestamp.now()
+    })
+  } catch (error) {
+    console.error('Error updating user profile:', error)
+    throw error
+  }
+}
+
 export const getPageOwner = async (ownerId) => {
   try {
     return await getUserById(ownerId)
