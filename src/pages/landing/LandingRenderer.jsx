@@ -1,212 +1,211 @@
-import { useEffect, useState, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { getPageBySlug } from '../../firebase/pages.service'
-import SeoHead from '../../components/seo/SeoHead'
-import DOMPurify from 'dompurify'
-import Modal from '../../components/ui/Modal'
-import Button from '../../components/ui/Button'
-import { AlertCircle } from 'lucide-react'
+import { useParams, Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { collection, query, where, getDocs } from 'firebase/firestore'
+import { db } from '../../firebase/firebase'
+import { Helmet } from 'react-helmet-async'
+import NoticeModal from '../../components/landing/NoticeModal'
+import { Phone, MessageCircle, Instagram, MapPin, ExternalLink } from 'lucide-react'
 
 export default function LandingRenderer() {
   const { businessSlug } = useParams()
   const [page, setPage] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [showUnpaidNotice, setShowUnpaidNotice] = useState(false)
-  const [useIframe, setUseIframe] = useState(false)
-  const iframeRef = useRef(null)
-  const contentRef = useRef(null)
+  const [notFound, setNotFound] = useState(false)
+  const [showNotice, setShowNotice] = useState(false)
 
   useEffect(() => {
     loadPage()
   }, [businessSlug])
 
-  useEffect(() => {
-    // Check if page HTML is a complete HTML document
-    if (page?.html) {
-      const hasHtmlTag = page.html.toLowerCase().includes('<html')
-      const hasDoctype = page.html.toLowerCase().includes('<!doctype')
-      setUseIframe(hasHtmlTag || hasDoctype)
-    }
-  }, [page])
-
-  useEffect(() => {
-    // Execute scripts in content after rendering
-    if (!useIframe && contentRef.current && page?.html) {
-      const scripts = contentRef.current.querySelectorAll('script')
-      scripts.forEach(oldScript => {
-        const newScript = document.createElement('script')
-        
-        // Copy attributes
-        Array.from(oldScript.attributes).forEach(attr => {
-          newScript.setAttribute(attr.name, attr.value)
-        })
-        
-        // Copy content or src
-        if (oldScript.src) {
-          newScript.src = oldScript.src
-        } else {
-          newScript.textContent = oldScript.textContent
-        }
-        
-        // Replace old script with new one to execute it
-        oldScript.parentNode.replaceChild(newScript, oldScript)
-      })
-    }
-  }, [page, useIframe])
-
   const loadPage = async () => {
     try {
-      const pageData = await getPageBySlug(businessSlug)
+      const q = query(
+        collection(db, 'pages'),
+        where('slug', '==', businessSlug),
+        where('published', '==', true)
+      )
+      const snapshot = await getDocs(q)
       
-      if (!pageData) {
-        setError('Page not found')
-        return
-      }
-
-      // Only show published pages to public
-      if (pageData.status !== 'published') {
-        setError('This page is not published yet.')
-        return
-      }
-
-      // Check if page should show unpaid notice
-      if (pageData.status === 'published' && !pageData.isPaid) {
-        setShowUnpaidNotice(true)
-      }
-
-      setPage(pageData)
-    } catch (err) {
-      console.error('Error loading page:', err)
-      if (err.code === 'permission-denied') {
-        setError('This page is not available.')
+      if (snapshot.empty) {
+        setNotFound(true)
       } else {
-        setError('Failed to load page. Please try again.')
+        const pageData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() }
+        setPage(pageData)
+        
+        // Show notice if published but not paid
+        if (!pageData.isPaid) {
+          setShowNotice(true)
+        }
       }
+    } catch (error) {
+      console.error('Error loading page:', error)
+      setNotFound(true)
     } finally {
       setLoading(false)
     }
   }
 
+  // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading page...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     )
   }
 
-  if (error || !page) {
+  // Not found
+  if (notFound || !page) {
+    return <Navigate to="/404" replace />
+  }
+
+  // Check if expired
+  const isExpired = page.expiryDate && new Date(page.expiryDate) < new Date()
+  if (isExpired) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center max-w-md px-4">
-          <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {error === 'Page not found' ? 'Page Not Found' : 'Page Unavailable'}
-          </h1>
+      <div className="flex items-center justify-center min-h-screen bg-white px-4">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">❌</span>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Page Expired</h1>
           <p className="text-gray-600 mb-6">
-            {error || "The page you're looking for doesn't exist or has been removed."}
+            This page's subscription has expired. Please contact the business owner to renew.
           </p>
-          <Link to="/explore">
-            <Button>Explore Other Pages</Button>
-          </Link>
+          <a
+            href="/explore"
+            className="inline-block px-6 py-3 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800 transition-colors"
+          >
+            Explore Other Businesses
+          </a>
         </div>
       </div>
     )
   }
 
-  // Prepare HTML - allow scripts, styles, and external resources
-  const sanitizedHTML = DOMPurify.sanitize(page.html, {
-    ADD_TAGS: ['iframe', 'style', 'script', 'link'],
-    ADD_ATTR: [
-      'allow', 'allowfullscreen', 'frameborder', 'scrolling', 
-      'target', 'rel', 'href', 'src', 'type', 'async', 'defer',
-      'crossorigin', 'integrity', 'referrerpolicy', 'charset'
-    ],
-    ALLOW_UNKNOWN_PROTOCOLS: true
-  })
-
+  // Render page
   return (
     <>
-      <SeoHead
-        title={page.meta?.title || page.title}
-        description={page.meta?.description || `Visit ${page.title} on KashPages`}
-        keywords={page.meta?.keywords || []}
-        ogImage={page.meta?.ogImage}
-        ogUrl={`https://kashpages.in/${page.slug}`}
-      />
+      {/* SEO Meta Tags */}
+      <Helmet>
+        <title>{page.seoTitle || page.title}</title>
+        <meta name="description" content={page.metaDescription || `${page.title} - Professional business page on KashPages`} />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content={page.seoTitle || page.title} />
+        <meta property="og:description" content={page.metaDescription || `${page.title} - Professional business page on KashPages`} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`https://kashpages.in/${page.slug}`} />
+        {page.ogImage && <meta property="og:image" content={page.ogImage} />}
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={page.seoTitle || page.title} />
+        <meta name="twitter:description" content={page.metaDescription || `${page.title} - Professional business page on KashPages`} />
+        {page.ogImage && <meta name="twitter:image" content={page.ogImage} />}
+        
+        {/* Canonical URL */}
+        <link rel="canonical" href={`https://kashpages.in/${page.slug}`} />
+      </Helmet>
 
-      {/* Unpaid Notice Modal */}
-      <Modal
-        isOpen={showUnpaidNotice}
-        onClose={() => setShowUnpaidNotice(false)}
-        title="Temporary Preview"
-        size="md"
-      >
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-6 h-6 text-orange-600 flex-shrink-0 mt-1" />
-            <div>
-              <p className="text-gray-700 mb-3">
-                This page is temporarily published for review and will be unpublished within 24 hours if payment is not received.
-              </p>
-              <p className="text-sm text-gray-600">
-                If you are the business owner, please contact us to complete your payment and keep this page live.
-              </p>
-            </div>
-          </div>
-          <div className="bg-gray-50 rounded-lg p-4 text-sm">
-            <p className="font-medium text-gray-900 mb-2">Contact Admin:</p>
-            <div className="space-y-1 text-gray-700">
-              <p>📞 Phone: +91-XXXX-XXXX</p>
-              <p>💬 WhatsApp: +91-XXXX-XXXX</p>
-              <p>📧 Email: admin@kashpages.in</p>
-            </div>
-          </div>
-          <Button onClick={() => setShowUnpaidNotice(false)} className="w-full">
-            Continue to Page
-          </Button>
-        </div>
-      </Modal>
+      {/* Notice Modal */}
+      {showNotice && (
+        <NoticeModal onClose={() => setShowNotice(false)} />
+      )}
 
-      {/* Render Landing Page */}
-      {useIframe ? (
-        // Full HTML document - use iframe WITHOUT same-origin to fix sandbox warning
-        <iframe
-          ref={iframeRef}
-          srcDoc={sanitizedHTML}
-          className="w-full border-0"
-          style={{ minHeight: '100vh' }}
-          title={page.title}
-          // Safe sandbox: allow scripts but NOT same-origin (prevents escape)
-          sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
+      {/* Page Content */}
+      {page.content ? (
+        // Custom HTML content
+        <div
+          className="landing-page-content"
+          dangerouslySetInnerHTML={{ __html: page.content }}
         />
       ) : (
-        // HTML snippet - render directly with full script support
-        <>
-          <div
-            ref={contentRef}
-            className="landing-page-content"
-            dangerouslySetInnerHTML={{ __html: sanitizedHTML }}
-          />
-          
-          {/* KashPages Branding Footer (only for snippets) */}
-          <div className="bg-gray-900 text-white py-6">
-            <div className="max-w-7xl mx-auto px-4 text-center">
-              <p className="text-sm opacity-75">
-                Powered by{' '}
-                <Link to="/" className="font-medium hover:underline">
-                  KashPages
-                </Link>
-                {' '}- Professional Landing Pages for Kashmir Businesses
-              </p>
-            </div>
-          </div>
-        </>
+        // Fallback default template
+        <DefaultTemplate page={page} />
       )}
+
+      {/* KashPages Branding Footer */}
+      <footer className="bg-gray-50 border-t border-gray-200 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-gray-600">
+              Published by{' '}
+              <a href="/" className="font-medium text-gray-900 hover:text-gray-700">
+                KashPages
+              </a>
+            </p>
+            <a
+              href="/contact"
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
+              Get your own page
+            </a>
+          </div>
+        </div>
+      </footer>
     </>
+  )
+}
+
+// Default template fallback
+function DefaultTemplate({ page }) {
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Hero */}
+      <section className="bg-gradient-to-br from-gray-50 to-white py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-6">
+            {page.title}
+          </h1>
+          {page.metaDescription && (
+            <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
+              {page.metaDescription}
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section className="py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
+            Get in Touch
+          </h2>
+          <div className="grid sm:grid-cols-2 gap-6">
+            <a
+              href="tel:+919999999999"
+              className="flex items-center gap-4 p-6 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors"
+            >
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
+                <Phone className="w-6 h-6 text-gray-900" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">Call Us</p>
+                <p className="text-sm text-gray-600">+91-XXXX-XXXX</p>
+              </div>
+            </a>
+            
+            <a
+              href="https://wa.me/919999999999"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-4 p-6 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-colors"
+            >
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
+                <MessageCircle className="w-6 h-6 text-gray-900" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">WhatsApp</p>
+                <p className="text-sm text-gray-600">Message us</p>
+              </div>
+            </a>
+          </div>
+        </div>
+      </section>
+    </div>
   )
 }
