@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { useEffect } from 'react'
 
 // Public pages
 import Home from './pages/Home'
@@ -29,6 +30,13 @@ import Settings from './pages/admin/Settings'
 import LandingRenderer from './pages/landing/LandingRenderer'
 
 function App() {
+  const location = useLocation()
+
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [location.pathname])
+
   return (
     <Routes>
       {/* Public routes */}
@@ -52,6 +60,7 @@ function App() {
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
       <Route path="/admin/users" element={<AdminRoute><Users /></AdminRoute>} />
       <Route path="/admin/pages" element={<AdminRoute><PagesList /></AdminRoute>} />
+      <Route path="/admin/pages/new" element={<AdminRoute><PageEditor /></AdminRoute>} />
       <Route path="/admin/pages/:pageId" element={<AdminRoute><PageEditor /></AdminRoute>} />
       <Route path="/admin/payments" element={<AdminRoute><PaymentTracking /></AdminRoute>} />
       <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
@@ -74,8 +83,11 @@ function ProtectedRoute({ children }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading...</p>
+        </div>
       </div>
     )
   }
@@ -93,8 +105,11 @@ function AdminRoute({ children }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading...</p>
+        </div>
       </div>
     )
   }
