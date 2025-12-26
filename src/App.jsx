@@ -22,6 +22,8 @@ import AdminDashboard from './pages/admin/Dashboard'
 import Users from './pages/admin/Users'
 import PagesList from './pages/admin/PagesList'
 import PageEditor from './pages/admin/PageEditor'
+import PaymentTracking from './pages/admin/PaymentTracking'
+import Settings from './pages/admin/Settings'
 
 // Landing page renderer
 import LandingRenderer from './pages/landing/LandingRenderer'
@@ -51,6 +53,8 @@ function App() {
       <Route path="/admin/users" element={<AdminRoute><Users /></AdminRoute>} />
       <Route path="/admin/pages" element={<AdminRoute><PagesList /></AdminRoute>} />
       <Route path="/admin/pages/:pageId" element={<AdminRoute><PageEditor /></AdminRoute>} />
+      <Route path="/admin/payments" element={<AdminRoute><PaymentTracking /></AdminRoute>} />
+      <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
       
       {/* 404 */}
       <Route path="/404" element={<NotFound />} />
