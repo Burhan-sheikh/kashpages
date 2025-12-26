@@ -4,7 +4,8 @@ import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../../firebase/firebase'
 import { Helmet } from 'react-helmet-async'
 import NoticeModal from '../../components/landing/NoticeModal'
-import { Phone, MessageCircle, Instagram, MapPin, ExternalLink } from 'lucide-react'
+import { getTemplateById } from '../../templates/templateRegistry'
+import { Phone, MessageCircle } from 'lucide-react'
 
 export default function LandingRenderer() {
   const { businessSlug } = useParams()
@@ -86,7 +87,10 @@ export default function LandingRenderer() {
     )
   }
 
-  // Render page
+  // Render with template or custom HTML
+  const template = page.templateId ? getTemplateById(page.templateId) : null
+  const TemplateComponent = template?.component
+
   return (
     <>
       {/* SEO Meta Tags */}
@@ -123,6 +127,9 @@ export default function LandingRenderer() {
           className="landing-page-content"
           dangerouslySetInnerHTML={{ __html: page.content }}
         />
+      ) : TemplateComponent && page.templateData ? (
+        // Template-based rendering
+        <TemplateComponent data={page.templateData} />
       ) : (
         // Fallback default template
         <DefaultTemplate page={page} />
